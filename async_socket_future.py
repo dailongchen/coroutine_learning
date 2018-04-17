@@ -1,6 +1,8 @@
 import selectors
 import socket
 
+import pprint
+
 
 class Future:
     def __init__(self):
@@ -85,7 +87,7 @@ class Fetcher:
             if chunk:
                 self.response += chunk
             else:
-                print(self.response)
+                pprint.pprint(self.response)
                 break
 
 
