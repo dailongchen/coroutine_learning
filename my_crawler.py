@@ -1,5 +1,6 @@
 import asyncio
 import aiohttp
+import logging
 import re
 import sys
 import urllib
@@ -49,13 +50,21 @@ class Crawler:
 
         self._seen_urls = set()
 
+        # config logger
+        self._logger = logging.getLogger('crawler')
+        self._logger.setLevel(logging.DEBUG)
+
+        ch = logging.StreamHandler(sys.stdout)
+        ch.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        self._logger.addHandler(ch)
+
     async def _load(self, request_item):
         with await self._semaphore:
             url = request_item.url
             if url in self._seen_urls:
                 return
 
-            print(url)
+            self._logger.info(url)
             self._seen_urls.add(url)
 
             try:
@@ -76,15 +85,9 @@ class Crawler:
                                 break
                             request_item.received(chunk)
                         request_item.done(self)
-            except asyncio.TimeoutError:
-                print('error: timeout. {}'.format(url))
-            except [aiohttp.client_exceptions.ClientResponseError,
-                    aiohttp.client_exceptions.ClientOSError] as exc:
-                print('error: {0}. {1}'.format(exc, url))
-            except:
-                exc_tuple = sys.exc_info()
-                print('error: {0}, {1}. {2}'.format(exc_tuple[0], exc_tuple[1], url))
-                raise
+            except Exception as e:
+                self._logger.error(url)
+                self._logger.exception(e)
 
     async def _crawl(self):
         self._crawl_id += 1
@@ -98,7 +101,7 @@ class Crawler:
                 try:
                     self._request_queue.task_done()
                 except ValueError:
-                    print('Clawler_{} is done'.format(this_crawl_id))
+                    self._logger.info('Clawler_{} is done'.format(this_crawl_id))
 
     async def close(self):
         await self._client_session.close()
